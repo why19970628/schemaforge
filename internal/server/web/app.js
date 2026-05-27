@@ -93,6 +93,8 @@ let language = localStorage.getItem("schemaforge-language") || "en";
 let lastConverted = { mode: "", input: "" };
 const input = document.querySelector("#input");
 const output = document.querySelector("#output");
+const inputHighlight = document.querySelector("#input-highlight");
+const outputHighlight = document.querySelector("#output-highlight");
 const status = document.querySelector("#status");
 const formatButton = document.querySelector("#format-sql");
 const themeButton = document.querySelector("#theme");
@@ -144,6 +146,7 @@ function setMode(next) {
   output.value = "";
   lastConverted = { mode: "", input: "" };
   status.textContent = t("ready");
+  updateHighlights();
   resizeTextareas();
 }
 
@@ -154,6 +157,7 @@ document.querySelectorAll("nav button").forEach((button) => {
 document.querySelector("#sample").addEventListener("click", () => {
   input.value = samples[mode] || "";
   lastConverted = { mode: "", input: "" };
+  updateHighlights();
   resizeTextareas();
 });
 
@@ -169,6 +173,7 @@ fileInput.addEventListener("change", async () => {
     output.value = "";
     lastConverted = { mode: "", input: "" };
     status.textContent = t("fileLoaded");
+    updateHighlights();
     resizeTextareas();
   } catch {
     status.textContent = t("fileFailed");
@@ -182,6 +187,7 @@ document.querySelector("#clear").addEventListener("click", () => {
   output.value = "";
   lastConverted = { mode: "", input: "" };
   status.textContent = t("cleared");
+  updateHighlights();
   resizeTextareas();
 });
 
@@ -198,6 +204,7 @@ formatButton.addEventListener("click", () => {
   input.value = formatted;
   lastConverted = { mode: "", input: "" };
   status.textContent = t("formatted");
+  updateHighlights();
   resizeTextareas();
 });
 
@@ -212,6 +219,7 @@ async function runConvert({ force = false } = {}) {
   if (!force && lastConverted.mode === mode && lastConverted.input === value) return;
   status.textContent = t("brewing");
   output.value = "";
+  updateHighlights();
   const response = await fetch("/api/convert", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -225,6 +233,7 @@ async function runConvert({ force = false } = {}) {
   output.value = payload.output;
   lastConverted = { mode, input: value };
   status.textContent = t("converted");
+  updateHighlights();
   resizeTextareas();
 }
 
@@ -240,6 +249,7 @@ input.addEventListener("keydown", async (event) => {
   if (event.key === "Tab") {
     event.preventDefault();
     insertAtCursor(input, "  ");
+    updateHighlights();
     resizeTextareas();
     return;
   }
@@ -249,7 +259,13 @@ input.addEventListener("keydown", async (event) => {
   }
 });
 
-input.addEventListener("input", resizeTextareas);
+input.addEventListener("input", () => {
+  updateHighlights();
+  resizeTextareas();
+});
+
+input.addEventListener("scroll", syncEditorScroll);
+output.addEventListener("scroll", syncEditorScroll);
 
 themeButton.addEventListener("click", () => {
   const next = document.body.dataset.theme === "dark" ? "light" : "dark";
@@ -277,6 +293,116 @@ function resizeTextareas() {
     textarea.style.height = "auto";
     textarea.style.height = Math.max(560, textarea.scrollHeight) + "px";
   });
+  inputHighlight.style.height = input.style.height;
+  outputHighlight.style.height = output.style.height;
+}
+
+function syncEditorScroll(event) {
+  const textarea = event.currentTarget;
+  const highlight = textarea === input ? inputHighlight : outputHighlight;
+  highlight.scrollTop = textarea.scrollTop;
+  highlight.scrollLeft = textarea.scrollLeft;
+}
+
+function updateHighlights() {
+  inputHighlight.innerHTML = highlightCode(input.value, inputLanguageForMode(mode));
+  outputHighlight.innerHTML = highlightCode(output.value, outputLanguageForMode(mode));
+}
+
+function inputLanguageForMode(value) {
+  if (value.startsWith("sql-")) return "sql";
+  if (value === "json-go") return "json";
+  if (value === "yaml-go") return "yaml";
+  if (value === "xml-json") return "xml";
+  return "text";
+}
+
+function outputLanguageForMode(value) {
+  if (value === "sql-es" || value === "sql-mongo" || value === "xml-json") return "json";
+  if (value === "sql-ent" || value === "sql-gorm" || value === "json-go" || value === "yaml-go") return "go";
+  return "text";
+}
+
+function highlightCode(value, languageName) {
+  const escaped = escapeHTML(value || " ");
+  if (languageName === "sql") return highlightSQL(escaped);
+  if (languageName === "go") return highlightGo(escaped);
+  if (languageName === "json") return highlightJSON(escaped);
+  if (languageName === "yaml") return highlightYAML(escaped);
+  if (languageName === "xml") return highlightXML(escaped);
+  return escaped;
+}
+
+function escapeHTML(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function highlightSQL(value) {
+  const keywords = /^(CREATE|TABLE|PRIMARY|KEY|UNIQUE|INDEX|NOT|NULL|DEFAULT|AUTO_INCREMENT|COMMENT|ENGINE|CHARSET|COLLATE|UNSIGNED|CHARACTER|SET|ROW_FORMAT|DYNAMIC)$/i;
+  const types = /^(bigint|int|tinyint|varchar|char|text|datetime|timestamp|decimal|double|float|json|bool)$/i;
+  return tokenize(value, /(`[^`]*`|'[^']*'|\b[A-Za-z_][\w_]*\b|\b\d+(?:\.\d+)?\b)/g, (token) => {
+    if (/^(`|'|")/.test(token)) return wrap("string", token);
+    if (keywords.test(token)) return wrap("keyword", token);
+    if (types.test(token)) return wrap("type", token);
+    if (/^\d/.test(token)) return wrap("number", token);
+    return token;
+  });
+}
+
+function highlightGo(value) {
+  const keywords = /^(package|import|type|struct|func|return|var|const|interface|map|range)$/;
+  const types = /^(string|int|int64|float64|bool|any|time\.Time)$/;
+  const literals = /^(true|false|nil)$/;
+  return tokenize(value, /(\/\/.*$|`[^`]*`|"[^"]*"|\btime\.Time\b|\b[A-Za-z_][\w_]*\b)/gm, (token) => {
+    if (token.startsWith("//")) return wrap("comment", token);
+    if (token.startsWith("`") || token.startsWith('"')) return wrap("string", token);
+    if (keywords.test(token)) return wrap("keyword", token);
+    if (types.test(token)) return wrap("type", token);
+    if (literals.test(token)) return wrap("bool", token);
+    return token;
+  });
+}
+
+function highlightJSON(value) {
+  return tokenize(value, /("[^"]*"\s*:|:\s*"[^"]*"|\btrue\b|\bfalse\b|\bnull\b|-?\b\d+(?:\.\d+)?\b)/g, (token) => {
+    if (/^"/.test(token)) return wrap("keyword", token);
+    if (/^:\s*"/.test(token)) return wrap("string", token);
+    if (/true|false|null/.test(token)) return wrap("bool", token);
+    return wrap("number", token);
+  });
+}
+
+function highlightYAML(value) {
+  return tokenize(value, /^(\s*[\w.-]+\s*:)|(:\s*".*?"|:\s*'.*?')|\b(true|false|null)\b|\b(-?\d+(?:\.\d+)?)\b/gm, (token) => {
+    if (/^\s*[\w.-]+\s*:/.test(token)) return wrap("keyword", token);
+    if (/^:\s*["']/.test(token)) return wrap("string", token);
+    if (/true|false|null/.test(token)) return wrap("bool", token);
+    return wrap("number", token);
+  });
+}
+
+function highlightXML(value) {
+  return value
+    .replace(/(&lt;\/?)([\w:-]+)/g, '$1<span class="tok-tag">$2</span>')
+    .replace(/([\w:-]+)=(&quot;[^&]*&quot;|"[^"]*")/g, '<span class="tok-keyword">$1</span>=<span class="tok-string">$2</span>');
+}
+
+function tokenize(value, pattern, decorate) {
+  let output = "";
+  let lastIndex = 0;
+  for (const match of value.matchAll(pattern)) {
+    output += value.slice(lastIndex, match.index);
+    output += decorate(match[0]);
+    lastIndex = match.index + match[0].length;
+  }
+  return output + value.slice(lastIndex);
+}
+
+function wrap(kind, value) {
+  return `<span class="tok-${kind}">${value}</span>`;
 }
 
 function formatCreateTableSQL(sql) {

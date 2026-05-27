@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SchemaForge</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-theme="light">
   <aside class="rail">
     <div class="brand">
-      <span class="mark">S</span>
+      <span class="mark">SF</span>
       <div>
         <strong>SchemaForge</strong>
         <small data-i18n="brandSub">schema cockpit</small>
@@ -50,11 +51,17 @@
     <section class="panes">
       <label class="pane">
         <span data-i18n="inputLabel">Input</span>
-        <textarea id="input" spellcheck="false"></textarea>
+        <div class="editor">
+          <pre id="input-highlight" aria-hidden="true"></pre>
+          <textarea id="input" spellcheck="false"></textarea>
+        </div>
       </label>
       <label class="pane output">
         <span data-i18n="outputLabel">Output</span>
-        <textarea id="output" spellcheck="false" readonly></textarea>
+        <div class="editor">
+          <pre id="output-highlight" aria-hidden="true"></pre>
+          <textarea id="output" spellcheck="false" readonly></textarea>
+        </div>
       </label>
     </section>
     <footer id="status">Ready</footer>
