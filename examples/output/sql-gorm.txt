@@ -1,0 +1,14 @@
+package models
+
+import "time"
+
+type User struct {
+	ID        int64     `gorm:"column:id;type:bigint;primaryKey;autoIncrement;not null" json:"id"`
+	Email     string    `gorm:"column:email;type:varchar(255);not null;uniqueIndex" json:"email"`
+	Enabled   bool      `gorm:"column:enabled;type:tinyint(1);not null" json:"enabled"`
+	CreatedAt time.Time `gorm:"column:created_at;type:datetime;not null" json:"created_at"`
+}
+
+func (User) TableName() string {
+	return "users"
+}

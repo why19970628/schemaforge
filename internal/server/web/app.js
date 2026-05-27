@@ -26,6 +26,7 @@ const translations = {
     subtitle: "Paste a structure sample, brew production-ready schema code.",
     formatSQL: "Format SQL",
     sample: "Sample",
+    upload: "Upload",
     convert: "Convert",
     copy: "Copy",
     clear: "Clear",
@@ -42,7 +43,10 @@ const translations = {
     sqlOnly: "SQL formatting is available in SQL modes",
     formatFailed: "Format failed: paste a complete CREATE TABLE statement",
     formatted: "SQL formatted",
-    convertFailed: "Conversion failed"
+    convertFailed: "Conversion failed",
+    fileLoaded: "File loaded",
+    fileFailed: "Failed to read file",
+    shortcutHint: "Tip: Cmd/Ctrl + Enter converts the current input"
   },
   zh: {
     brandSub: "结构转换工作台",
@@ -50,6 +54,7 @@ const translations = {
     subtitle: "粘贴结构样例，生成可用的 Schema 或 Go 代码。",
     formatSQL: "格式化 SQL",
     sample: "示例",
+    upload: "上传",
     convert: "转换",
     copy: "复制",
     clear: "清空",
@@ -66,7 +71,10 @@ const translations = {
     sqlOnly: "SQL 格式化仅支持 SQL 模式",
     formatFailed: "格式化失败：请粘贴完整的 CREATE TABLE 语句",
     formatted: "SQL 已格式化",
-    convertFailed: "转换失败"
+    convertFailed: "转换失败",
+    fileLoaded: "文件已载入",
+    fileFailed: "文件读取失败",
+    shortcutHint: "提示：Cmd/Ctrl + Enter 可转换当前输入"
   }
 };
 
@@ -89,6 +97,7 @@ const status = document.querySelector("#status");
 const formatButton = document.querySelector("#format-sql");
 const themeButton = document.querySelector("#theme");
 const languageButton = document.querySelector("#language");
+const fileInput = document.querySelector("#file-input");
 
 function t(key) {
   return translations[language][key] || translations.en[key] || key;
@@ -110,6 +119,7 @@ function applyLanguage() {
   document.querySelector("#subtitle").textContent = t("subtitle");
   formatButton.textContent = t("formatSQL");
   document.querySelector("#sample").textContent = t("sample");
+  document.querySelector("#upload").textContent = t("upload");
   document.querySelector("#convert").textContent = t("convert");
   document.querySelector("#copy").textContent = t("copy");
   document.querySelector("#clear").textContent = t("clear");
@@ -134,6 +144,7 @@ function setMode(next) {
   output.value = "";
   lastConverted = { mode: "", input: "" };
   status.textContent = t("ready");
+  resizeTextareas();
 }
 
 document.querySelectorAll("nav button").forEach((button) => {
@@ -143,6 +154,27 @@ document.querySelectorAll("nav button").forEach((button) => {
 document.querySelector("#sample").addEventListener("click", () => {
   input.value = samples[mode] || "";
   lastConverted = { mode: "", input: "" };
+  resizeTextareas();
+});
+
+document.querySelector("#upload").addEventListener("click", () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  try {
+    input.value = await file.text();
+    output.value = "";
+    lastConverted = { mode: "", input: "" };
+    status.textContent = t("fileLoaded");
+    resizeTextareas();
+  } catch {
+    status.textContent = t("fileFailed");
+  } finally {
+    fileInput.value = "";
+  }
 });
 
 document.querySelector("#clear").addEventListener("click", () => {
@@ -150,6 +182,7 @@ document.querySelector("#clear").addEventListener("click", () => {
   output.value = "";
   lastConverted = { mode: "", input: "" };
   status.textContent = t("cleared");
+  resizeTextareas();
 });
 
 formatButton.addEventListener("click", () => {
@@ -165,6 +198,7 @@ formatButton.addEventListener("click", () => {
   input.value = formatted;
   lastConverted = { mode: "", input: "" };
   status.textContent = t("formatted");
+  resizeTextareas();
 });
 
 document.querySelector("#copy").addEventListener("click", async () => {
@@ -191,6 +225,7 @@ async function runConvert({ force = false } = {}) {
   output.value = payload.output;
   lastConverted = { mode, input: value };
   status.textContent = t("converted");
+  resizeTextareas();
 }
 
 document.querySelector("#convert").addEventListener("click", async () => {
@@ -200,6 +235,21 @@ document.querySelector("#convert").addEventListener("click", async () => {
 input.addEventListener("blur", async () => {
   await runConvert();
 });
+
+input.addEventListener("keydown", async (event) => {
+  if (event.key === "Tab") {
+    event.preventDefault();
+    insertAtCursor(input, "  ");
+    resizeTextareas();
+    return;
+  }
+  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    await runConvert({ force: true });
+  }
+});
+
+input.addEventListener("input", resizeTextareas);
 
 themeButton.addEventListener("click", () => {
   const next = document.body.dataset.theme === "dark" ? "light" : "dark";
@@ -214,6 +264,20 @@ languageButton.addEventListener("click", () => {
   applyLanguage();
   status.textContent = t("ready");
 });
+
+function insertAtCursor(textarea, text) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+  textarea.selectionStart = textarea.selectionEnd = start + text.length;
+}
+
+function resizeTextareas() {
+  [input, output].forEach((textarea) => {
+    textarea.style.height = "auto";
+    textarea.style.height = Math.max(560, textarea.scrollHeight) + "px";
+  });
+}
 
 function formatCreateTableSQL(sql) {
   const trimmed = sql.trim();
@@ -280,3 +344,4 @@ const savedTheme = localStorage.getItem("schemaforge-theme") || "light";
 document.body.dataset.theme = savedTheme;
 applyLanguage();
 setMode(mode);
+status.textContent = t("shortcutHint");

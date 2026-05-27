@@ -1,0 +1,9 @@
+{
+  "id": 1,
+  "name": "Ada",
+  "active": true,
+  "profile": {
+    "city": "Hangzhou"
+  },
+  "tags": ["go", "schema"]
+}

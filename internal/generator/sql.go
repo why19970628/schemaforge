@@ -41,6 +41,9 @@ func EntSchemas(tables []parser.Table) (string, error) {
 func GORMModels(tables []parser.Table) (string, error) {
 	var buf bytes.Buffer
 	buf.WriteString("package models\n\n")
+	if gormNeedsTime(tables) {
+		buf.WriteString("import \"time\"\n\n")
+	}
 	for _, table := range tables {
 		name := exportName(singularTableName(table.Name))
 		fmt.Fprintf(&buf, "type %s struct {\n", name)
@@ -57,6 +60,17 @@ func GORMModels(tables []parser.Table) (string, error) {
 		return buf.String(), nil
 	}
 	return string(src), nil
+}
+
+func gormNeedsTime(tables []parser.Table) bool {
+	for _, table := range tables {
+		for _, col := range table.Columns {
+			if sqlGoType(col.Type) == "time.Time" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func ESMappings(tables []parser.Table) (string, error) {
@@ -118,14 +132,14 @@ func entField(col parser.Column) string {
 func entType(t string) string {
 	t = strings.ToLower(t)
 	switch {
+	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
+		return "Bool"
 	case strings.Contains(t, "bigint"):
 		return "Int64"
 	case strings.Contains(t, "int"):
 		return "Int"
 	case strings.Contains(t, "decimal"), strings.Contains(t, "double"), strings.Contains(t, "float"):
 		return "Float"
-	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
-		return "Bool"
 	case strings.Contains(t, "time"), strings.Contains(t, "date"):
 		return "Time"
 	case strings.Contains(t, "json"):
@@ -138,14 +152,14 @@ func entType(t string) string {
 func sqlGoType(t string) string {
 	t = strings.ToLower(t)
 	switch {
+	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
+		return "bool"
 	case strings.Contains(t, "bigint"):
 		return "int64"
 	case strings.Contains(t, "int"):
 		return "int"
 	case strings.Contains(t, "decimal"), strings.Contains(t, "double"), strings.Contains(t, "float"):
 		return "float64"
-	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
-		return "bool"
 	case strings.Contains(t, "time"), strings.Contains(t, "date"):
 		return "time.Time"
 	default:
@@ -173,12 +187,12 @@ func gormTag(col parser.Column) string {
 func esType(t string) string {
 	t = strings.ToLower(t)
 	switch {
+	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
+		return "boolean"
 	case strings.Contains(t, "int"):
 		return "long"
 	case strings.Contains(t, "decimal"), strings.Contains(t, "double"), strings.Contains(t, "float"):
 		return "double"
-	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
-		return "boolean"
 	case strings.Contains(t, "time"), strings.Contains(t, "date"):
 		return "date"
 	case strings.Contains(t, "text"):
@@ -191,12 +205,12 @@ func esType(t string) string {
 func mongoType(t string) string {
 	t = strings.ToLower(t)
 	switch {
+	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
+		return "bool"
 	case strings.Contains(t, "int"):
 		return "long"
 	case strings.Contains(t, "decimal"), strings.Contains(t, "double"), strings.Contains(t, "float"):
 		return "double"
-	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
-		return "bool"
 	case strings.Contains(t, "time"), strings.Contains(t, "date"):
 		return "date"
 	default:

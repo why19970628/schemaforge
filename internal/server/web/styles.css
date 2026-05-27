@@ -189,6 +189,11 @@ h1 {
   border-bottom: 1px solid var(--line);
 }
 
+.pane:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
 textarea {
   width: 100%;
   min-height: 560px;
@@ -199,6 +204,7 @@ textarea {
   color: var(--code-text);
   background: var(--code-bg);
   font: 13px/1.55 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  tab-size: 2;
 }
 
 .output textarea { color: var(--code-text); }
