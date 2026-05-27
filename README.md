@@ -22,15 +22,12 @@ SchemaForge is a tiny open-source workbench that turns structured text into sche
 ## Install
 
 ```bash
-go install github.com/schemaforge/schemaforge/cmd/schemaforge@latest
+go install github.com/why19970628/schemaforge/cmd/schemaforge@latest
 ```
 
-Homebrew support is planned for releases:
+You can also download prebuilt binaries from GitHub Releases once a release is published:
 
-```bash
-brew tap schemaforge/tap
-brew install schemaforge
-```
+https://github.com/why19970628/schemaforge/releases
 
 ## Docker
 

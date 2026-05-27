@@ -22,15 +22,12 @@ SchemaForge 是一个开源结构转换工作台，用一个 Go 二进制同时�
 ## 安装
 
 ```bash
-go install github.com/schemaforge/schemaforge/cmd/schemaforge@latest
+go install github.com/why19970628/schemaforge/cmd/schemaforge@latest
 ```
 
-后续发布版本会支持 Homebrew：
+发布版本创建后，也可以从 GitHub Releases 下载预编译二进制：
 
-```bash
-brew tap schemaforge/tap
-brew install schemaforge
-```
+https://github.com/why19970628/schemaforge/releases
 
 ## Docker
 

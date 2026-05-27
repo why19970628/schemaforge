@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/schemaforge/schemaforge/internal/generator"
-	"github.com/schemaforge/schemaforge/internal/parser"
+	"github.com/why19970628/schemaforge/internal/generator"
+	"github.com/why19970628/schemaforge/internal/parser"
 )
 
 type Mode string

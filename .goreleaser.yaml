@@ -25,16 +25,3 @@ archives:
 
 checksum:
   name_template: checksums.txt
-
-brews:
-  - name: schemaforge
-    homepage: https://github.com/schemaforge/schemaforge
-    description: CLI and local UI for converting structured text into schemas and Go code
-    license: MIT
-    repository:
-      owner: schemaforge
-      name: homebrew-tap
-    install: |
-      bin.install "schemaforge"
-    test: |
-      system "#{bin}/schemaforge", "version"

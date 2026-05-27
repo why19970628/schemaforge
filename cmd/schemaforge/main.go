@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/schemaforge/schemaforge/internal/convert"
-	"github.com/schemaforge/schemaforge/internal/server"
+	"github.com/why19970628/schemaforge/internal/convert"
+	"github.com/why19970628/schemaforge/internal/server"
 )
 
 var version = "dev"

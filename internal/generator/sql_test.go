@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/schemaforge/schemaforge/internal/parser"
+	"github.com/why19970628/schemaforge/internal/parser"
 )
 
 func TestGORMModelsAddsTimeImportOnlyWhenNeeded(t *testing.T) {

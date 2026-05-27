@@ -7,7 +7,7 @@ import (
 	"go/format"
 	"strings"
 
-	"github.com/schemaforge/schemaforge/internal/parser"
+	"github.com/why19970628/schemaforge/internal/parser"
 )
 
 func EntSchemas(tables []parser.Table) (string, error) {
