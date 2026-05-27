@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="SchemaForge UI overview">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#1f2328" flood-opacity=".18"/>
+    </filter>
+    <linearGradient id="brand" x1="0" x2="1">
+      <stop offset="0" stop-color="#0969da"/>
+      <stop offset="1" stop-color="#2da44e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="#f6f8fa"/>
+  <circle cx="1360" cy="120" r="260" fill="#ddf4ff"/>
+  <circle cx="160" cy="760" r="240" fill="#dafbe1"/>
+  <text x="96" y="110" font-family="Inter,Arial,sans-serif" font-size="54" font-weight="800" fill="#24292f">SchemaForge</text>
+  <text x="96" y="158" font-family="Inter,Arial,sans-serif" font-size="24" fill="#57606a">Convert structured input into production-ready schemas and Go code.</text>
+  <g transform="translate(96 210)" filter="url(#shadow)">
+    <rect width="1408" height="610" rx="18" fill="#ffffff" stroke="#d0d7de"/>
+    <rect width="250" height="610" rx="18" fill="#ffffff"/>
+    <line x1="250" y1="0" x2="250" y2="610" stroke="#d0d7de"/>
+    <g transform="translate(28 30)">
+      <rect width="42" height="42" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+      <text x="21" y="29" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="21" font-weight="800" fill="#0969da">S</text>
+      <text x="58" y="20" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="800" fill="#24292f">SchemaForge</text>
+      <text x="58" y="43" font-family="Inter,Arial,sans-serif" font-size="13" fill="#57606a">schema cockpit</text>
+    </g>
+    <text x="28" y="122" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" fill="#57606a">DATA</text>
+    <g font-family="Inter,Arial,sans-serif" font-size="16" fill="#24292f">
+      <rect x="24" y="140" width="202" height="38" rx="6" fill="#ddf4ff" stroke="#0969da"/>
+      <text x="40" y="165">JSON to Go</text>
+      <text x="40" y="213">YAML to Go</text>
+      <text x="40" y="260">XML to JSON</text>
+    </g>
+    <text x="28" y="316" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" fill="#57606a">SQL</text>
+    <g font-family="Inter,Arial,sans-serif" font-size="16" fill="#24292f">
+      <text x="40" y="358">SQL to Ent</text>
+      <text x="40" y="405">SQL to GORM</text>
+      <text x="40" y="452">SQL to ES</text>
+      <text x="40" y="499">SQL to MongoDB</text>
+    </g>
+    <g transform="translate(286 28)">
+      <text x="0" y="28" font-family="Inter,Arial,sans-serif" font-size="30" font-weight="800" fill="#24292f">SQL to GORM</text>
+      <text x="0" y="58" font-family="Inter,Arial,sans-serif" font-size="15" fill="#57606a">Paste DDL, format SQL, convert on blur, copy the generated output.</text>
+      <g transform="translate(360 8)" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700">
+        <rect x="0" y="0" width="106" height="38" rx="7" fill="#2d4552"/>
+        <text x="53" y="25" text-anchor="middle" fill="#fff">Format SQL</text>
+        <rect x="116" y="0" width="78" height="38" rx="7" fill="#2da44e"/>
+        <text x="155" y="25" text-anchor="middle" fill="#fff">Convert</text>
+        <rect x="204" y="0" width="66" height="38" rx="7" fill="#2d4552"/>
+        <text x="237" y="25" text-anchor="middle" fill="#fff">Copy</text>
+      </g>
+      <g transform="translate(980 8)" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700">
+        <rect width="142" height="34" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+        <text x="36" y="22" text-anchor="middle" fill="#57606a">中文</text>
+        <text x="105" y="22" text-anchor="middle" fill="#57606a">Dark</text>
+      </g>
+      <g transform="translate(0 92)">
+        <rect width="530" height="388" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+        <rect width="530" height="42" rx="10" fill="#f6f8fa"/>
+        <text x="20" y="27" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700" fill="#57606a">Input</text>
+        <g font-family="SFMono-Regular,Consolas,monospace" font-size="16">
+          <text x="20" y="78" fill="#8250df">CREATE TABLE</text>
+          <text x="150" y="78" fill="#24292f">`users` (</text>
+          <text x="38" y="114" fill="#24292f">`id` bigint NOT NULL AUTO_INCREMENT,</text>
+          <text x="38" y="150" fill="#24292f">`email` varchar(255) NOT NULL,</text>
+          <text x="38" y="186" fill="#24292f">`created_at` datetime NOT NULL,</text>
+          <text x="38" y="222" fill="#8250df">PRIMARY KEY</text>
+          <text x="150" y="222" fill="#24292f">(`id`),</text>
+          <text x="38" y="258" fill="#8250df">UNIQUE KEY</text>
+          <text x="142" y="258" fill="#24292f">`uk_email` (`email`),</text>
+          <text x="20" y="294" fill="#24292f">) ENGINE = InnoDB;</text>
+        </g>
+      </g>
+      <g transform="translate(566 92)">
+        <rect width="530" height="388" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+        <rect width="530" height="42" rx="10" fill="#f6f8fa"/>
+        <text x="20" y="27" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700" fill="#57606a">Output</text>
+        <g font-family="SFMono-Regular,Consolas,monospace" font-size="16">
+          <text x="20" y="78" fill="#cf222e">type</text>
+          <text x="70" y="78" fill="#24292f">User struct {</text>
+          <text x="38" y="114" fill="#24292f">ID int64</text>
+          <text x="168" y="114" fill="#0a3069">`gorm:"column:id;primaryKey"`</text>
+          <text x="38" y="150" fill="#24292f">Email string</text>
+          <text x="168" y="150" fill="#0a3069">`gorm:"column:email"`</text>
+          <text x="38" y="186" fill="#24292f">CreatedAt time.Time</text>
+          <text x="38" y="222" fill="#24292f">}</text>
+          <text x="20" y="282" fill="#57606a">// same engine powers CLI and UI</text>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(96 842)" font-family="Inter,Arial,sans-serif" font-size="18" fill="#57606a">
+    <text>JSON/YAML/XML + MySQL DDL</text>
+    <circle cx="286" cy="-6" r="4" fill="#2da44e"/>
+    <text x="306">Ent, GORM, ES, MongoDB</text>
+    <circle cx="612" cy="-6" r="4" fill="#0969da"/>
+    <text x="632">single binary, CLI and local UI</text>
+  </g>
+</svg>
