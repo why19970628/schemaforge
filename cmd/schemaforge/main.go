@@ -36,8 +36,16 @@ func run(args []string) error {
 		printUsage()
 		return nil
 	default:
+		if isVersionArg(args[0]) {
+			fmt.Println(version)
+			return nil
+		}
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func isVersionArg(arg string) bool {
+	return arg == "-v" || arg == "--version" || arg == "-version"
 }
 
 func runConvert(args []string) error {
@@ -97,7 +105,7 @@ func printUsage() {
 Usage:
   schemaforge convert <mode> [-i input] [-o output]
   schemaforge ui [--port 8989]
-  schemaforge version
+  schemaforge version | -v | --version | -version
 
 Modes:
   json-go    JSON sample to Go struct
