@@ -9,7 +9,7 @@ import (
 	"github.com/why19970628/schemaforge/internal/convert"
 )
 
-//go:embed web/*
+//go:embed web/dist/*
 var webFS embed.FS
 
 func ListenAndServe(addr string) error {
@@ -19,7 +19,7 @@ func ListenAndServe(addr string) error {
 }
 
 func Register(mux *http.ServeMux) {
-	staticFS, err := fs.Sub(webFS, "web")
+	staticFS, err := fs.Sub(webFS, "web/dist")
 	if err != nil {
 		panic(err)
 	}

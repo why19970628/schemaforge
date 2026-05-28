@@ -5,10 +5,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/format"
+	"sort"
 	"strings"
 
 	"github.com/why19970628/schemaforge/internal/parser"
 )
+
+type NullableStrategy string
+
+const (
+	NullableZero    NullableStrategy = "zero"
+	NullablePointer NullableStrategy = "pointer"
+	NullableSQLNull NullableStrategy = "sql-null"
+)
+
+type Options struct {
+	PackageName      string           `json:"packageName"`
+	NullableStrategy NullableStrategy `json:"nullable"`
+	JSONTags         bool             `json:"jsonTags"`
+	Comments         bool             `json:"comments"`
+}
+
+func normalizeOptions(options Options) Options {
+	if strings.TrimSpace(options.PackageName) == "" {
+		options.PackageName = "models"
+	}
+	if options.NullableStrategy == "" {
+		options.NullableStrategy = NullableZero
+	}
+	return options
+}
 
 func EntSchemas(tables []parser.Table) (string, error) {
 	var out strings.Builder
@@ -39,18 +65,37 @@ func EntSchemas(tables []parser.Table) (string, error) {
 }
 
 func GORMModels(tables []parser.Table) (string, error) {
+	return GORMModelsWithOptions(tables, Options{PackageName: "models", NullableStrategy: NullableZero, JSONTags: true})
+}
+
+func GORMModelsWithOptions(tables []parser.Table, options Options) (string, error) {
+	options = normalizeOptions(options)
 	var buf bytes.Buffer
-	buf.WriteString("package models\n\n")
-	if gormNeedsTime(tables) {
-		buf.WriteString("import \"time\"\n\n")
+	fmt.Fprintf(&buf, "package %s\n\n", exportNameOrLower(options.PackageName))
+	imports := gormImports(tables, options)
+	if len(imports) == 1 {
+		fmt.Fprintf(&buf, "import %q\n\n", imports[0])
+	} else if len(imports) > 1 {
+		buf.WriteString("import (\n")
+		for _, item := range imports {
+			fmt.Fprintf(&buf, "\t%q\n", item)
+		}
+		buf.WriteString(")\n\n")
 	}
 	for _, table := range tables {
 		name := exportName(singularTableName(table.Name))
 		fmt.Fprintf(&buf, "type %s struct {\n", name)
 		for _, col := range table.Columns {
+			if options.Comments && col.Comment != "" {
+				fmt.Fprintf(&buf, "\t// %s\n", col.Comment)
+			}
 			field := exportName(col.Name)
 			tag := gormTag(col)
-			fmt.Fprintf(&buf, "\t%s %s `gorm:\"%s\" json:\"%s\"`\n", field, sqlGoType(col.Type), tag, col.Name)
+			tags := []string{fmt.Sprintf("gorm:%q", tag)}
+			if options.JSONTags {
+				tags = append(tags, fmt.Sprintf("json:%q", col.Name))
+			}
+			fmt.Fprintf(&buf, "\t%s %s `%s`\n", field, sqlGoTypeWithOptions(col, options), strings.Join(tags, " "))
 		}
 		fmt.Fprintf(&buf, "}\n\n")
 		fmt.Fprintf(&buf, "func (%s) TableName() string {\n\treturn %q\n}\n\n", name, table.Name)
@@ -62,15 +107,28 @@ func GORMModels(tables []parser.Table) (string, error) {
 	return string(src), nil
 }
 
-func gormNeedsTime(tables []parser.Table) bool {
+func gormImports(tables []parser.Table, options Options) []string {
+	seen := map[string]bool{}
 	for _, table := range tables {
 		for _, col := range table.Columns {
-			if sqlGoType(col.Type) == "time.Time" {
-				return true
+			typ := sqlGoTypeWithOptions(col, options)
+			if strings.Contains(typ, "time.Time") {
+				seen["time"] = true
+			}
+			if strings.Contains(typ, "sql.") {
+				seen["database/sql"] = true
+			}
+			if strings.Contains(typ, "json.RawMessage") {
+				seen["encoding/json"] = true
 			}
 		}
 	}
-	return false
+	imports := make([]string, 0, len(seen))
+	for item := range seen {
+		imports = append(imports, item)
+	}
+	sort.Strings(imports)
+	return imports
 }
 
 func ESMappings(tables []parser.Table) (string, error) {
@@ -152,18 +210,59 @@ func entType(t string) string {
 func sqlGoType(t string) string {
 	t = strings.ToLower(t)
 	switch {
+	case strings.Contains(t, "json"):
+		return "json.RawMessage"
 	case strings.Contains(t, "bool"), strings.Contains(t, "tinyint(1)"):
 		return "bool"
+	case strings.Contains(t, "bigint") && strings.Contains(t, "unsigned"):
+		return "uint64"
 	case strings.Contains(t, "bigint"):
 		return "int64"
+	case strings.Contains(t, "int") && strings.Contains(t, "unsigned"):
+		return "uint"
 	case strings.Contains(t, "int"):
 		return "int"
+	case strings.Contains(t, "blob"), strings.Contains(t, "binary"):
+		return "[]byte"
+	case strings.Contains(t, "enum"), strings.Contains(t, "set"):
+		return "string"
 	case strings.Contains(t, "decimal"), strings.Contains(t, "double"), strings.Contains(t, "float"):
 		return "float64"
 	case strings.Contains(t, "time"), strings.Contains(t, "date"):
 		return "time.Time"
 	default:
 		return "string"
+	}
+}
+
+func sqlGoTypeWithOptions(col parser.Column, options Options) string {
+	base := sqlGoType(col.Type)
+	if !col.Nullable || col.Primary {
+		return base
+	}
+	switch options.NullableStrategy {
+	case NullablePointer:
+		if strings.HasPrefix(base, "[]") {
+			return base
+		}
+		return "*" + base
+	case NullableSQLNull:
+		switch base {
+		case "string", "json.RawMessage":
+			return "sql.NullString"
+		case "int", "int64", "uint", "uint64":
+			return "sql.NullInt64"
+		case "float64":
+			return "sql.NullFloat64"
+		case "bool":
+			return "sql.NullBool"
+		case "time.Time":
+			return "sql.NullTime"
+		default:
+			return base
+		}
+	default:
+		return base
 	}
 }
 
@@ -216,6 +315,15 @@ func mongoType(t string) string {
 	default:
 		return "string"
 	}
+}
+
+func exportNameOrLower(s string) string {
+	name := strings.TrimSpace(s)
+	if name == "" {
+		return "models"
+	}
+	name = strings.ReplaceAll(name, "-", "_")
+	return strings.ToLower(name)
 }
 
 func quoteList(items []string) string {

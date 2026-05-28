@@ -21,8 +21,9 @@ const (
 )
 
 type Request struct {
-	Mode  Mode   `json:"mode"`
-	Input string `json:"input"`
+	Mode    Mode              `json:"mode"`
+	Input   string            `json:"input"`
+	Options generator.Options `json:"options"`
 }
 
 type Response struct {
@@ -59,7 +60,11 @@ func Convert(req Request) (Response, error) {
 		case ModeSQLEnt:
 			out, err = generator.EntSchemas(tables)
 		case ModeSQLGORM:
-			out, err = generator.GORMModels(tables)
+			if req.Options == (generator.Options{}) {
+				out, err = generator.GORMModels(tables)
+			} else {
+				out, err = generator.GORMModelsWithOptions(tables, req.Options)
+			}
 		case ModeSQLES:
 			out, err = generator.ESMappings(tables)
 		case ModeSQLMongo:

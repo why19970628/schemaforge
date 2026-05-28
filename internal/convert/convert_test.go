@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/why19970628/schemaforge/internal/convert"
+	"github.com/why19970628/schemaforge/internal/generator"
 )
 
 func TestConvertJSONToGo(t *testing.T) {
@@ -37,6 +38,30 @@ func TestConvertSQLTargets(t *testing.T) {
 				t.Fatalf("%s output missing %q:\n%s", mode, want, resp.Output)
 			}
 		}
+	}
+}
+
+func TestConvertSQLGORMWithOptions(t *testing.T) {
+	sql := "CREATE TABLE `users` (`id` bigint NOT NULL, `nickname` varchar(64) NULL, PRIMARY KEY (`id`));"
+	resp, err := convert.Convert(convert.Request{
+		Mode:  convert.ModeSQLGORM,
+		Input: sql,
+		Options: generator.Options{
+			PackageName:      "model",
+			NullableStrategy: generator.NullablePointer,
+			JSONTags:         false,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"package model", "Nickname *string"} {
+		if !strings.Contains(resp.Output, want) {
+			t.Fatalf("output missing %q:\n%s", want, resp.Output)
+		}
+	}
+	if strings.Contains(resp.Output, `json:"`) {
+		t.Fatalf("did not expect json tags:\n%s", resp.Output)
 	}
 }
 

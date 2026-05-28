@@ -85,10 +85,14 @@ echo '{"id":1,"name":"Ada"}' | schemaforge convert json-go
 ## Development
 
 ```bash
+cd web && npm ci && npm run build
+cd ..
 go test ./internal/convert ./internal/server
 go run ./cmd/schemaforge convert json-go -i example/user.json
 go run ./cmd/schemaforge ui --port 8989
 ```
+
+The local UI is built with Vue 3, Vite, Element Plus, and CodeMirror. The production build is embedded into the Go binary.
 
 ## Release Notes
 

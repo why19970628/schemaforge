@@ -27,6 +27,61 @@ func TestGORMModelsAddsTimeImportOnlyWhenNeeded(t *testing.T) {
 	}
 }
 
+func TestGORMModelsWithOptions(t *testing.T) {
+	tables := []parser.Table{{
+		Name: "users",
+		Columns: []parser.Column{
+			{Name: "id", Type: "bigint unsigned", Nullable: false, Primary: true, AutoIncrement: true, Comment: "primary id"},
+			{Name: "nickname", Type: "varchar(64)", Nullable: true, Comment: "display name"},
+			{Name: "deleted_at", Type: "datetime", Nullable: true, Comment: "deleted time"},
+			{Name: "payload", Type: "json", Nullable: true, Comment: "raw payload"},
+		},
+	}}
+	out, err := GORMModelsWithOptions(tables, Options{
+		PackageName:      "model",
+		NullableStrategy: NullablePointer,
+		JSONTags:         false,
+		Comments:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"package model",
+		"// primary id",
+		"ID uint64",
+		"Nickname *string",
+		"DeletedAt *time.Time",
+		"Payload *json.RawMessage",
+		`gorm:"column:nickname;type:varchar(64)"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, `json:"`) {
+		t.Fatalf("did not expect json tags:\n%s", out)
+	}
+}
+
+func TestGORMModelsWithSQLNullStrategy(t *testing.T) {
+	tables := []parser.Table{{Name: "users", Columns: []parser.Column{
+		{Name: "name", Type: "varchar(64)", Nullable: true},
+		{Name: "age", Type: "int", Nullable: true},
+		{Name: "enabled", Type: "tinyint(1)", Nullable: true},
+		{Name: "created_at", Type: "datetime", Nullable: true},
+	}}}
+	out, err := GORMModelsWithOptions(tables, Options{NullableStrategy: NullableSQLNull, JSONTags: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"database/sql", "Name", "sql.NullString", "Age", "sql.NullInt64", "Enabled", "sql.NullBool", "CreatedAt", "sql.NullTime"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestSQLTypeMapping(t *testing.T) {
 	cases := []struct {
 		mysql string

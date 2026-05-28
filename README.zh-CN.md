@@ -85,10 +85,14 @@ echo '{"id":1,"name":"Ada"}' | schemaforge convert json-go
 ## 开发
 
 ```bash
+cd web && npm ci && npm run build
+cd ..
 go test ./internal/convert ./internal/server
 go run ./cmd/schemaforge convert json-go -i example/user.json
 go run ./cmd/schemaforge ui --port 8989
 ```
+
+本地 UI 使用 Vue 3、Vite、Element Plus 和 CodeMirror 构建，生产构建产物会嵌入 Go 二进制。
 
 ## 发布
 

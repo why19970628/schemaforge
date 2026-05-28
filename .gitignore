@@ -1,5 +1,8 @@
 .DS_Store
-schemabrew
+schemaforge
 dist/
 coverage.out
 .superpowers/
+.idea/
+web/node_modules/
+web/dist/
