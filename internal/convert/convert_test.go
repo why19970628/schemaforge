@@ -76,3 +76,64 @@ func TestConvertXMLToJSON(t *testing.T) {
 		}
 	}
 }
+
+func TestConvertJSONDiff(t *testing.T) {
+	resp, err := convert.Convert(convert.Request{
+		Mode:  convert.ModeJSONDiff,
+		Input: `{"user":{"id":1,"name":"Ada","age":18,"tags":["go"]}}`,
+		Right: `{"user":{"id":"1","name":"Grace","email":"ada@example.com","tags":["go","sql"]}}`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`"added"`,
+		`"path": "$.user.email"`,
+		`"removed"`,
+		`"path": "$.user.age"`,
+		`"changed"`,
+		`"path": "$.user.name"`,
+		`"type_changed"`,
+		`"path": "$.user.id"`,
+		`"path": "$.user.tags[1]"`,
+	} {
+		if !strings.Contains(resp.Output, want) {
+			t.Fatalf("output missing %q:\n%s", want, resp.Output)
+		}
+	}
+}
+
+func TestConvertJSONDiffUnifiedFormat(t *testing.T) {
+	resp, err := convert.Convert(convert.Request{
+		Mode:   convert.ModeJSONDiff,
+		Input:  `{"user":{"name":"Ada","age":18}}`,
+		Right:  `{"user":{"name":"Grace","email":"ada@example.com"}}`,
+		Format: convert.FormatUnified,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"--- left.json",
+		"+++ right.json",
+		"@@",
+		`-    "age": 18,`,
+		`-    "name": "Ada"`,
+		`+    "email": "ada@example.com",`,
+		`+    "name": "Grace"`,
+	} {
+		if !strings.Contains(resp.Output, want) {
+			t.Fatalf("output missing %q:\n%s", want, resp.Output)
+		}
+	}
+}
+
+func TestConvertJSONDiffRequiresRightInput(t *testing.T) {
+	_, err := convert.Convert(convert.Request{Mode: convert.ModeJSONDiff, Input: `{"id":1}`})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "right input is empty") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

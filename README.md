@@ -48,6 +48,7 @@ docker run --rm -i schemaforge convert json-go < user.json
 
 ```bash
 schemaforge convert json-go -i user.json
+schemaforge convert json-diff -i before.json --right after.json --format unified
 schemaforge convert sql-ent -i schema.sql -o user_schema.go
 schemaforge convert sql-gorm -i schema.sql
 schemaforge convert sql-es -i schema.sql
@@ -68,6 +69,7 @@ echo '{"id":1,"name":"Ada"}' | schemaforge convert json-go
 | Mode | Input | Output |
 | --- | --- | --- |
 | `json-go` | JSON object sample | Go struct |
+| `json-diff` | Two JSON documents | Structured or unified diff |
 | `yaml-go` | YAML object sample | Go struct |
 | `xml-json` | XML document | JSON document |
 | `sql-ent` | MySQL DDL | Ent schema code |

@@ -49,6 +49,12 @@
           <p>{{ t.subtitle }}</p>
         </div>
         <div class="toolbar">
+          <el-segmented
+            v-if="isJsonDiffMode"
+            v-model="jsonDiffFormat"
+            :options="diffFormatOptions"
+            class="diff-format-switch"
+          />
           <el-button @click="loadSample">{{ t.sample }}</el-button>
           <el-button type="success" @click="convert(true)">{{ t.convert }}</el-button>
           <el-button @click="clearAll">{{ t.clear }}</el-button>
@@ -87,7 +93,63 @@
         </el-form>
       </section>
 
-      <section class="editors">
+      <section v-if="isJsonDiffMode" class="editors diff-editors">
+        <div class="pane">
+          <div class="pane-title">
+            <div class="pane-title-main">
+              <span>{{ t.leftJson }}</span>
+              <span class="language-badge">{{ diffOutputLabel }}</span>
+            </div>
+            <div class="pane-actions">
+              <el-button size="small" class="action-upload" @click="pickFile">{{ t.upload }}</el-button>
+              <input ref="fileInput" type="file" hidden @change="readFile" />
+            </div>
+          </div>
+          <CodeEditor
+            v-model="input"
+            :extensions="inputExtensions"
+            @blur="convert(false)"
+            @keydown="handleEditorKeydown"
+          />
+        </div>
+        <div class="pane">
+          <div class="pane-title">
+            <div class="pane-title-main">
+              <span>{{ t.rightJson }}</span>
+              <span class="language-badge">JSON</span>
+            </div>
+            <div class="pane-actions">
+              <el-button size="small" class="action-upload" @click="pickRightFile">{{ t.upload }}</el-button>
+              <input ref="rightFileInput" type="file" hidden @change="readRightFile" />
+            </div>
+          </div>
+          <CodeEditor
+            v-model="rightInput"
+            :extensions="inputExtensions"
+            @blur="convert(false)"
+            @keydown="handleEditorKeydown"
+          />
+        </div>
+        <div class="pane">
+          <div class="pane-title">
+            <div class="pane-title-main">
+              <span>{{ t.diffOutput }}</span>
+              <span class="language-badge">JSON</span>
+            </div>
+            <div class="pane-actions">
+              <el-button size="small" class="action-copy" @click="copyOutput">{{ t.copy }}</el-button>
+            </div>
+          </div>
+          <CodeEditor
+            v-model="output"
+            :extensions="outputExtensions"
+            :variant="jsonDiffFormat === 'unified' ? 'diff' : ''"
+            readonly
+          />
+        </div>
+      </section>
+
+      <section v-else class="editors">
         <div class="pane">
           <div class="pane-title">
             <div class="pane-title-main">
@@ -171,6 +233,11 @@ const translations = {
     clear: 'Clear',
     input: 'Input',
     output: 'Output',
+    leftJson: 'Left JSON',
+    rightJson: 'Right JSON',
+    diffOutput: 'Diff',
+    structured: 'Structured',
+    unified: 'Unified Diff',
     ready: 'Ready',
     converted: 'Converted',
     converting: 'Converting...',
@@ -204,6 +271,11 @@ const translations = {
     clear: '清空',
     input: '输入',
     output: '输出',
+    leftJson: '左侧 JSON',
+    rightJson: '右侧 JSON',
+    diffOutput: '差异结果',
+    structured: '结构化',
+    unified: 'Git Diff',
     ready: '就绪',
     converted: '已转换',
     converting: '转换中...',
@@ -231,10 +303,13 @@ const mode = ref('json-go')
 const language = ref(localStorage.getItem('schemaforge-language') || 'en')
 const theme = ref(localStorage.getItem('schemaforge-theme') || 'light')
 const input = ref('')
+const rightInput = ref('')
 const output = ref('')
+const jsonDiffFormat = ref('unified')
 const status = ref('')
 const fileInput = ref(null)
-const lastConverted = ref({ mode: '', input: '', options: '' })
+const rightFileInput = ref(null)
+const lastConverted = ref({ mode: '', input: '', right: '', format: '', options: '' })
 const history = ref(JSON.parse(localStorage.getItem('schemaforge-history') || '[]'))
 const options = ref({
   packageName: 'models',
@@ -245,6 +320,7 @@ const options = ref({
 
 const samples = {
   'json-go': '{"id": 1, "name": "Ada", "active": true}',
+  'json-diff': '{\n  "user": {\n    "id": 1,\n    "name": "Ada",\n    "age": 18,\n    "tags": ["go"]\n  }\n}',
   'yaml-go': 'id: 1\nname: Ada\nactive: true',
   'xml-json': '<user id="1"><name>Ada</name></user>',
   'sql-ent': "CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT COMMENT 'id', `email` varchar(255) NOT NULL COMMENT 'email', `age` int DEFAULT 0, PRIMARY KEY (`id`), UNIQUE KEY `uk_email` (`email`)) COMMENT='users';",
@@ -253,9 +329,14 @@ const samples = {
   'sql-mongo': "CREATE TABLE `users` (`id` bigint NOT NULL AUTO_INCREMENT COMMENT 'id', `email` varchar(255) NOT NULL COMMENT 'email', PRIMARY KEY (`id`)) COMMENT='users';",
 }
 
+const rightSamples = {
+  'json-diff': '{\n  "user": {\n    "id": "1",\n    "name": "Grace",\n    "email": "ada@example.com",\n    "tags": ["go", "sql"]\n  }\n}',
+}
+
 const modeLabels = {
   en: {
     'json-go': 'JSON to Go',
+    'json-diff': 'JSON Diff',
     'yaml-go': 'YAML to Go',
     'xml-json': 'XML to JSON',
     'sql-ent': 'SQL to Ent',
@@ -265,6 +346,7 @@ const modeLabels = {
   },
   zh: {
     'json-go': 'JSON 转 Go',
+    'json-diff': 'JSON 对比',
     'yaml-go': 'YAML 转 Go',
     'xml-json': 'XML 转 JSON',
     'sql-ent': 'SQL 转 Ent',
@@ -274,18 +356,24 @@ const modeLabels = {
   },
 }
 
-const dataModes = [{ mode: 'json-go' }, { mode: 'yaml-go' }, { mode: 'xml-json' }]
+const dataModes = [{ mode: 'json-go' }, { mode: 'json-diff' }, { mode: 'yaml-go' }, { mode: 'xml-json' }]
 const sqlModes = [{ mode: 'sql-ent' }, { mode: 'sql-gorm' }, { mode: 'sql-es' }, { mode: 'sql-mongo' }]
 const t = computed(() => translations[language.value])
 const labels = computed(() => modeLabels[language.value])
 const isSqlMode = computed(() => mode.value.startsWith('sql-'))
 const isGormMode = computed(() => mode.value === 'sql-gorm')
+const isJsonDiffMode = computed(() => mode.value === 'json-diff')
 const activeOptions = computed(() => (isGormMode.value ? options.value : {}))
 const optionKey = computed(() => JSON.stringify(activeOptions.value))
 const inputExtensions = computed(() => extensionsFor(inputLanguageForMode(mode.value)))
 const outputExtensions = computed(() => extensionsFor(outputLanguageForMode(mode.value)))
 const inputLanguageLabel = computed(() => inputLanguageForMode(mode.value).toUpperCase())
 const outputLanguageLabel = computed(() => outputLanguageForMode(mode.value).toUpperCase())
+const diffOutputLabel = computed(() => (jsonDiffFormat.value === 'unified' ? 'DIFF' : 'JSON'))
+const diffFormatOptions = computed(() => [
+  { label: t.value.unified, value: 'unified' },
+  { label: t.value.structured, value: 'structured' },
+])
 
 function extensionsFor(kind) {
   if (kind === 'sql') return [sql()]
@@ -298,13 +386,14 @@ function extensionsFor(kind) {
 
 function inputLanguageForMode(value) {
   if (value.startsWith('sql-')) return 'sql'
-  if (value === 'json-go') return 'json'
+  if (value === 'json-go' || value === 'json-diff') return 'json'
   if (value === 'yaml-go') return 'yaml'
   if (value === 'xml-json') return 'xml'
   return 'text'
 }
 
 function outputLanguageForMode(value) {
+  if (value === 'json-diff') return jsonDiffFormat.value === 'unified' ? 'text' : 'json'
   if (value === 'sql-es' || value === 'sql-mongo' || value === 'xml-json') return 'json'
   return 'go'
 }
@@ -312,6 +401,7 @@ function outputLanguageForMode(value) {
 function selectMode(next) {
   mode.value = next
   input.value = samples[next] || ''
+  rightInput.value = rightSamples[next] || ''
   output.value = ''
   resetConverted()
   status.value = t.value.ready
@@ -319,12 +409,14 @@ function selectMode(next) {
 
 function loadSample() {
   input.value = samples[mode.value] || ''
+  rightInput.value = rightSamples[mode.value] || ''
   output.value = ''
   resetConverted()
 }
 
 function clearAll() {
   input.value = ''
+  rightInput.value = ''
   output.value = ''
   resetConverted()
   status.value = t.value.cleared
@@ -332,6 +424,10 @@ function clearAll() {
 
 function pickFile() {
   fileInput.value?.click()
+}
+
+function pickRightFile() {
+  rightFileInput.value?.click()
 }
 
 async function readFile(event) {
@@ -349,16 +445,46 @@ async function readFile(event) {
   }
 }
 
+async function readRightFile(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  try {
+    rightInput.value = await file.text()
+    output.value = ''
+    resetConverted()
+    status.value = t.value.fileLoaded
+  } catch {
+    status.value = t.value.fileFailed
+  } finally {
+    event.target.value = ''
+  }
+}
+
 async function convert(force) {
   const value = input.value.trim()
   if (!value) return
-  if (!force && lastConverted.value.mode === mode.value && lastConverted.value.input === value && lastConverted.value.options === optionKey.value) return
+  const rightValue = rightInput.value.trim()
+  if (isJsonDiffMode.value && !rightValue) return
+  if (
+    !force &&
+    lastConverted.value.mode === mode.value &&
+    lastConverted.value.input === value &&
+    lastConverted.value.right === rightValue &&
+    lastConverted.value.format === jsonDiffFormat.value &&
+    lastConverted.value.options === optionKey.value
+  ) return
   status.value = t.value.converting
   output.value = ''
   const response = await fetch('/api/convert', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode: mode.value, input: value, options: activeOptions.value }),
+    body: JSON.stringify({
+      mode: mode.value,
+      input: value,
+      right: rightValue,
+      format: isJsonDiffMode.value ? jsonDiffFormat.value : '',
+      options: activeOptions.value,
+    }),
   })
   const payload = await response.json()
   if (!response.ok) {
@@ -366,7 +492,7 @@ async function convert(force) {
     return
   }
   output.value = payload.output
-  lastConverted.value = { mode: mode.value, input: value, options: optionKey.value }
+  lastConverted.value = { mode: mode.value, input: value, right: rightValue, format: jsonDiffFormat.value, options: optionKey.value }
   status.value = t.value.converted
   pushHistory()
 }
@@ -376,6 +502,7 @@ function pushHistory() {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     mode: mode.value,
     input: input.value,
+    right: rightInput.value,
     output: output.value,
     options: { ...options.value },
     time: new Date().toLocaleTimeString(),
@@ -387,9 +514,16 @@ function pushHistory() {
 function restoreHistory(item) {
   mode.value = item.mode
   input.value = item.input
+  rightInput.value = item.right || ''
   output.value = item.output
   options.value = { ...options.value, ...item.options }
-  lastConverted.value = { mode: item.mode, input: item.input.trim(), options: JSON.stringify(options.value) }
+  lastConverted.value = {
+    mode: item.mode,
+    input: item.input.trim(),
+    right: rightInput.value.trim(),
+    format: jsonDiffFormat.value,
+    options: JSON.stringify(activeOptions.value),
+  }
 }
 
 function copyOutput() {
@@ -426,7 +560,7 @@ function toggleTheme() {
 }
 
 function resetConverted() {
-  lastConverted.value = { mode: '', input: '', options: '' }
+  lastConverted.value = { mode: '', input: '', right: '', format: '', options: '' }
 }
 
 function formatCreateTableSQL(sqlText) {
@@ -488,6 +622,7 @@ function normalizeSQLKeywords(value) {
 }
 
 watch(options, resetConverted, { deep: true })
+watch(jsonDiffFormat, resetConverted)
 selectMode(mode.value)
 </script>
 
@@ -689,6 +824,17 @@ selectMode(mode.value)
   box-shadow: 0 10px 30px rgba(27, 31, 36, 0.06);
 }
 
+.diff-format-switch {
+  --el-segmented-item-selected-bg-color: #0969da;
+  --el-segmented-item-selected-color: #ffffff;
+  --el-segmented-bg-color: #f6f8fa;
+}
+
+.dark .diff-format-switch {
+  --el-segmented-item-selected-bg-color: #1f6feb;
+  --el-segmented-bg-color: #0d1117;
+}
+
 .dark .toolbar {
   border-color: #30363d;
   background: rgba(22, 27, 34, 0.78);
@@ -762,6 +908,10 @@ selectMode(mode.value)
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 18px;
+}
+
+.diff-editors {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.1fr);
 }
 
 .pane {
@@ -902,7 +1052,8 @@ selectMode(mode.value)
   }
 
   .topbar,
-  .editors {
+  .editors,
+  .diff-editors {
     grid-template-columns: 1fr;
   }
 

@@ -55,6 +55,8 @@ func runConvert(args []string) error {
 	mode := convert.Mode(args[0])
 	fs := flag.NewFlagSet("convert "+string(mode), flag.ContinueOnError)
 	inputPath := fs.String("i", "", "input file path, defaults to stdin")
+	rightPath := fs.String("right", "", "right input file path for json-diff")
+	format := fs.String("format", "", "output format for json-diff: structured or unified")
 	outputPath := fs.String("o", "", "output file path, defaults to stdout")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -64,7 +66,18 @@ func runConvert(args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := convert.Convert(convert.Request{Mode: mode, Input: string(data)})
+	req := convert.Request{Mode: mode, Input: string(data), Format: convert.Format(*format)}
+	if mode == convert.ModeJSONDiff {
+		if *rightPath == "" {
+			return fmt.Errorf("missing --right for json-diff")
+		}
+		rightData, readErr := readInput(*rightPath)
+		if readErr != nil {
+			return readErr
+		}
+		req.Right = string(rightData)
+	}
+	resp, err := convert.Convert(req)
 	if err != nil {
 		return err
 	}
@@ -104,11 +117,13 @@ func printUsage() {
 
 Usage:
   schemaforge convert <mode> [-i input] [-o output]
+  schemaforge convert json-diff -i left.json --right right.json [--format structured|unified] [-o output]
   schemaforge ui [--port 8989]
   schemaforge version | -v | --version | -version
 
 Modes:
   json-go    JSON sample to Go struct
+  json-diff  Compare two JSON documents
   yaml-go    YAML sample to Go struct
   xml-json   XML document to JSON
   sql-ent    MySQL CREATE TABLE to Ent schema
